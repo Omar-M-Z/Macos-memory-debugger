@@ -1,4 +1,0 @@
-- create command handler for the scan console. this must include
-  - ensure the filters are working as expected
-  - command to exit scan console
-  - add parallelism into the scan console to speed up scanning (multithreading and gpu)
