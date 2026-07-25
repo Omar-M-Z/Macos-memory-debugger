@@ -1,5 +1,5 @@
 all:
-	clang++ -std=c++17 -I include src/main.cpp src/debugger_console.cpp src/scan_console.cpp src/util.cpp src/scanning_helpers.cpp src/scan_filter.cpp -o analyst
+	clang++ -std=c++17 -I include src/main.cpp src/debugger_console.cpp src/scan_console.cpp src/util.cpp -o analyst
 	codesign --entitlements Entitlements.plist -f -s - analyst
 
 clean:

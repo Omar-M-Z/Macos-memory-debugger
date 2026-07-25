@@ -6,7 +6,6 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include "scanning_helpers.h"
 
 inline const char* COLOR_DEFAULT = "\033[0m";
 inline const char* COLOR_GREEN = "\033[32m";
@@ -16,12 +15,6 @@ inline const char* COLOR_RED = "\033[31m";
 enum class ErrorType {
     USAGE,
     OTHER
-};
-
-enum class ScanResult {
-    SUCCESS = 0,
-    MEM_ALLOC_FAIL = 1,
-    MEM_READ_FAIL = 2
 };
 
 /**
@@ -42,6 +35,22 @@ void log_success(const std::string &message);
  * @param message the error message to output
  */
 void log_error(ErrorType error_type, const std::string &message);
+
+/**
+ * Parses exactly eight binary digits into a byte.
+ * @param input the binary text to parse
+ * @param value receives the parsed byte when parsing succeeds
+ * @return true when input is valid, false otherwise
+ */
+bool parse_rawbyte(const std::string &input, unsigned char &value);
+
+/**
+ * Parses one or two hexadecimal digits into a byte.
+ * @param input the hexadecimal text to parse
+ * @param value receives the parsed byte when parsing succeeds
+ * @return true when input is valid, false otherwise
+ */
+bool parse_hexbyte(const std::string &input, unsigned char &value);
 
 struct MemoryObjectStore;
 
@@ -115,21 +124,3 @@ public:
 private:
     std::vector<MemoryObject> objects;
 };
-
-/**
- * Scans a process's readable memory regions for a target value.
- * @param task the Mach task port for the target process
- * @param target_value the value to search for
- * @param results storage for matching addresses and bytes
- * @return 0 on success, non-zero on failure
- */
-template<typename T>
-ScanResult scan_proc_memory_for_value(mach_port_t task, const T &target_value, MemoryObjectStore &results)
-{
-    return scan_proc_memory_for_bytes(
-        task,
-        reinterpret_cast<const unsigned char *>(&target_value),
-        sizeof(T),
-        results
-    );
-}

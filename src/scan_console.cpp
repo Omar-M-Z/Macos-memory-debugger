@@ -3,6 +3,7 @@
 
 #include "scan_console.h"
 #include "scan_filter.h"
+#include "scanning_helpers.h"
 #include "util.h"
 
 // creating a new scan console and performing an initial scan based on the provided arguments.
@@ -46,50 +47,20 @@ scan_console::scan_console(debugger_console &parent, const std::vector<std::stri
                 return;
             }
         } else if (this->scan_type == "rawbyte") {
-            if (this->target_value_str.size() != 8) {
+            unsigned char value;
+            if (!parse_rawbyte(this->target_value_str, value)) {
                 log_error(ErrorType::USAGE, "Invalid value for type rawbyte.");
                 return;
-            }
-
-            unsigned char value = 0;
-            for (char bit : this->target_value_str) {
-                if (bit != '0' && bit != '1') {
-                    log_error(ErrorType::USAGE, "Invalid value for type rawbyte.");
-                    return;
-                }
-                value = static_cast<unsigned char>((value << 1) | (bit - '0'));
             }
             scan_proc_memory_for_value<unsigned char>(parent.task, value, this->scan_results);
 
         } else if (this->scan_type == "hexbyte") {
-
-            if (this->target_value_str.empty()) {
+            unsigned char value;
+            if (!parse_hexbyte(this->target_value_str, value)) {
                 log_error(ErrorType::USAGE, "Invalid value for type hexbyte.");
                 return;
             }
-
-            unsigned int parsed = 0;
-            for (char c : this->target_value_str) {
-                unsigned int digit;
-                if (c >= '0' && c <= '9') {
-                    digit = c - '0';
-                } else if (c >= 'a' && c <= 'f') {
-                    digit = c - 'a' + 10;
-                } else if (c >= 'A' && c <= 'F') {
-                    digit = c - 'A' + 10;
-                } else {
-                    log_error(ErrorType::USAGE, "Invalid value for type hexbyte.");
-                    return;
-                }
-
-                parsed = (parsed << 4) | digit;
-                if (parsed > 0xff) {
-                    log_error(ErrorType::USAGE, "Invalid value for type hexbyte.");
-                    return;
-                }
-            }
-
-            scan_proc_memory_for_value<unsigned char>(parent.task, static_cast<unsigned char>(parsed), this->scan_results);
+            scan_proc_memory_for_value<unsigned char>(parent.task, value, this->scan_results);
         }
         else {
             log_error(ErrorType::USAGE, "Invalid type specified for scan. Use int, float, double, rawbyte, or hexbyte.");
@@ -126,8 +97,43 @@ void scan_console::handle_command(const std::vector<std::string> &args)
             return;
         }
 
-        // TODO: refine the scan results based on the new value or filter type
+        FilterType filter_type;
 
+        if (args[1] == "same") {
+            filter_type = FilterType::SAME;
+        } else if (args[1] == "changed") {
+            filter_type = FilterType::CHANGED;
+        } else if (args[1] == "increased") {
+            filter_type = FilterType::INCREASED;
+        } else if (args[1] == "decreased") {
+            filter_type = FilterType::DECREASED;
+        } else if (args[1] == "new_value") {
+            filter_type = FilterType::NEW_VALUE;
+        } else {
+            log_error(ErrorType::USAGE, "Invalid refine type. Use same, changed, increased, decreased, or new_value.");
+            return;
+        }
+
+        MemoryObjectStore new_results;
+
+        try {
+            ScanResult result;
+
+            if (scan_type == "int") {
+                result = scan_proc_memory_for_value_filtered<int>(parent.task, scan_results, new_results, filter_type, std::stoi(args[2]));
+            } else if (scan_type == "float") {
+                result = scan_proc_memory_for_value_filtered<float>(parent.task, scan_results, new_results,filter_type, std::stof(args[2]));
+            } else if (scan_type == "double") {
+                result = scan_proc_memory_for_value_filtered<double>(parent.task, scan_results, new_results,filter_type,std::stod(args[2]));
+            } else if (scan_type == "rawbyte" || scan_type == "hexbyte") {
+                log_message("Refinement for rawbyte and hexbyte types is not yet implemented.");
+                // TODO: Implement refinement for rawbyte and hexbyte types
+            }
+        } catch (const std::exception&) {
+            log_error(ErrorType::USAGE, "Invalid refinement value.");
+            return;
+        }
+        
         return;
     }
 

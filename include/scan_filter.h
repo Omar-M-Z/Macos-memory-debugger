@@ -1,37 +1,35 @@
 #pragma once
 
 #include <string>
-
+#include <vector>
 #include "util.h"
 
-namespace scan_filter {
+template<typename T>
+bool keep_if_same(const T& old_value, const T& new_value)
+{
+    return old_value == new_value;
+}
 
-enum class FilterType {
-    Same,
-    Changed,
-    Increased,
-    Decreased
-};
+template<typename T>
+bool keep_if_changed(const T& old_value, const T& new_value)
+{
+    return old_value != new_value;
+}
 
-/**
- * Verify whether the given scan type supports the requested filter.
- * This is useful when some comparisons only make sense for numeric or ordered types.
- *
- * @param scan_type the type of scan being performed
- * @param filter the filter to verify
- * @return true if the filter is supported for the given scan type, false otherwise
- */
-bool verify_scan_filter(const std::string &scan_type, FilterType filter);
+template<typename T>
+bool keep_if_increased(const T& old_value, const T& new_value)
+{
+    return new_value > old_value;
+}
 
-/**
- * Apply the named filter to an old/new scan object pair.
- * Returns true if the pair passes the requested filter.
- *
- * @param old_object the previous memory object
- * @param new_object the current memory object
- * @param filter the filter to apply
- * @return true if the pair passes the filter, false otherwise
- */
-bool apply_filter(const MemoryObject &old_object, const MemoryObject &new_object, FilterType filter);
+template<typename T>
+bool keep_if_decreased(const T& old_value, const T& new_value)
+{
+    return new_value < old_value;
+}
 
+template<typename T>
+bool keep_if_new_value(const T& new_value, const T& target_value)
+{
+    return new_value == target_value;
 }
