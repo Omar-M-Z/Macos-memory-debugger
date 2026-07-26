@@ -38,4 +38,6 @@ struct debugger_console
     void print_help();
 
     std::unique_ptr<sub_console> active_sub_console;
+
+    void remove_active_sub_console();
 };

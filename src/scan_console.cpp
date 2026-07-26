@@ -1,5 +1,6 @@
 #include <iostream>
 #include <vector>
+#include <stdexcept>
 
 #include "scan_console.h"
 #include "scan_filter.h"
@@ -12,64 +13,73 @@
 scan_console::scan_console(debugger_console &parent, const std::vector<std::string> &args) : sub_console(parent)
 {
     if (args.size() < 2) {
-        std::cerr << "Usage: scan <value> <type>" << std::endl;
-        std::cerr << "Types: int, float, double, byte" << std::endl;
+        log_error(ErrorType::USAGE, "Usage: scan <value> <type>. Types: int, float, double, byte");
+        throw std::invalid_argument("");
         return;
     }
 
-    this->target_value_str = args[0];
-    this->scan_type = args[1];
+    this->target_value_str = args[1];
+    this->scan_type = args[2];
 
     // Perform initial scan based on type
-    try {
-        if (this->scan_type == "int") {
-            try {
-                int value = std::stoi(this->target_value_str);
-                scan_proc_memory_for_value<int>(parent.task, value, this->scan_results);
-            } catch (const std::exception &e) {
-                log_error(ErrorType::USAGE, "Invalid value for type int.");
-                return;
-            }
-        } else if (this->scan_type == "float") {
-            try {
-                float value = std::stof(this->target_value_str);
-                scan_proc_memory_for_value<float>(parent.task, value, this->scan_results);
-            } catch (const std::exception &e) {
-                log_error(ErrorType::USAGE, "Invalid value for type float.");
-                return;
-            }
-        } else if (this->scan_type == "double") {
-            try {
-                double value = std::stod(this->target_value_str);
-                scan_proc_memory_for_value<double>(parent.task, value, this->scan_results);
-            } catch (const std::exception &e) {
-                log_error(ErrorType::USAGE, "Invalid value for type double.");
-                return;
-            }
-        } else if (this->scan_type == "rawbyte") {
-            unsigned char value;
-            if (!parse_rawbyte(this->target_value_str, value)) {
-                log_error(ErrorType::USAGE, "Invalid value for type rawbyte.");
-                return;
-            }
-            scan_proc_memory_for_value<unsigned char>(parent.task, value, this->scan_results);
 
-        } else if (this->scan_type == "hexbyte") {
-            unsigned char value;
-            if (!parse_hexbyte(this->target_value_str, value)) {
-                log_error(ErrorType::USAGE, "Invalid value for type hexbyte.");
-                return;
-            }
-            scan_proc_memory_for_value<unsigned char>(parent.task, value, this->scan_results);
-        }
-        else {
-            log_error(ErrorType::USAGE, "Invalid type specified for scan. Use int, float, double, rawbyte, or hexbyte.");
+    ScanResult result;
+    if (this->scan_type == "int") {
+        try {
+            int value = std::stoi(this->target_value_str);
+            result = scan_proc_memory_for_value<int>(parent.task, value, this->scan_results);
+        } catch (const std::exception &e) {
+            log_error(ErrorType::USAGE, "Invalid value for type int.");
+            throw std::invalid_argument("");
             return;
         }
-        log_message("Initial scan complete. Found " + std::to_string(this->scan_results.size()) + " matches.");
-    } catch (const std::exception &e) {
-        log_error(ErrorType::OTHER, "Error during scan: " + std::string(e.what()));
+    } else if (this->scan_type == "float") {
+        try {
+            float value = std::stof(this->target_value_str);
+            result = scan_proc_memory_for_value<float>(parent.task, value, this->scan_results);
+        } catch (const std::exception &e) {
+            log_error(ErrorType::USAGE, "Invalid value for type float.");
+            throw std::invalid_argument("");
+            return;
+        }
+    } else if (this->scan_type == "double") {
+        try {
+            double value = std::stod(this->target_value_str);
+            result = scan_proc_memory_for_value<double>(parent.task, value, this->scan_results);
+        } catch (const std::exception &e) {
+            log_error(ErrorType::USAGE, "Invalid value for type double.");
+            throw std::invalid_argument("");
+            return;
+        }
+    } else if (this->scan_type == "rawbyte") {
+        unsigned char value;
+        if (!parse_rawbyte(this->target_value_str, value)) {
+            log_error(ErrorType::USAGE, "Invalid value for type rawbyte.");
+            throw std::invalid_argument("");
+            return;
+        }
+        result = scan_proc_memory_for_value<unsigned char>(parent.task, value, this->scan_results);
+
+    } else if (this->scan_type == "hexbyte") {
+        unsigned char value;
+        if (!parse_hexbyte(this->target_value_str, value)) {
+            log_error(ErrorType::USAGE, "Invalid value for type hexbyte.");
+            throw std::invalid_argument("");
+            return;
+        }
+        result = scan_proc_memory_for_value<unsigned char>(parent.task, value, this->scan_results);
     }
+    else {
+        log_error(ErrorType::USAGE, "Invalid type specified for scan. Use int, float, double, rawbyte, or hexbyte.");
+        throw std::invalid_argument("");
+        return;
+    }
+    if (result != ScanResult::SUCCESS) {
+        log_error(ErrorType::OTHER, "Memory scan failed with error code: " + std::to_string(static_cast<int>(result)));
+        throw std::runtime_error("");
+        return;
+    }
+    log_message("Initial scan complete. Found " + std::to_string(this->scan_results.size()) + " matches.");
     
 }
 
@@ -81,13 +91,13 @@ void scan_console::handle_command(const std::vector<std::string> &args)
         return;
     }
 
-    if (args[0] == "list") {
+    else if (args[0] == "list") {
         log_message("Listing found addresses:");
         print_scan_results();
         return;
     }
 
-    if (args[0] == "refine") {
+    else if (args[0] == "refine") {
         if (this->scan_results.empty()) {
             log_message("No scan results to refine.");
             return;
@@ -137,8 +147,14 @@ void scan_console::handle_command(const std::vector<std::string> &args)
         return;
     }
 
-    if (args[0] == "help") {
+    else if (args[0] == "help") {
         print_help();
+        return;
+    }
+
+    else if (args[0] == "exit") {
+        log_message("Exiting scan console.");
+        this->parent.remove_active_sub_console();
         return;
     }
 

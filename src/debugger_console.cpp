@@ -26,7 +26,9 @@ debugger_console::debugger_console(int pid_arg, mach_port_t task_arg, mach_vm_ad
 void debugger_console::handle_command(const std::vector<std::string> &args) {
     // switching consoles and/or calling functions specific to each command implementation
     if (args[0] == "scan"){
-        this->active_sub_console = std::make_unique<scan_console>(*this, args);
+        try {
+            this->active_sub_console = std::make_unique<scan_console>(*this, args);
+        } catch (const std::invalid_argument&) {}
     } 
     else if (args[0] == "help") {
         log_message("help command not yet implemented");
@@ -58,4 +60,8 @@ int debugger_console::run() {
     }
 
     return 0;
+}
+
+void debugger_console::remove_active_sub_console() {
+    this->active_sub_console.reset();
 }
