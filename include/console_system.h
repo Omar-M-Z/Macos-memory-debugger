@@ -15,9 +15,9 @@ struct sub_console
 {
     explicit sub_console(debugger_console& parent) : parent(parent) {}
 
-    std::string prompt;
     debugger_console &parent;
 
+    virtual std::string get_prompt() const { return "subconsole"; }
     virtual void handle_command(const std::vector<std::string> &args) = 0;
 
     virtual ~sub_console() = default;

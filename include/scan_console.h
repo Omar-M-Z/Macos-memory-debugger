@@ -16,14 +16,18 @@ struct scan_console : sub_console {
     */
     scan_console(debugger_console &parent, const std::vector<std::string> &args);
 
-    std::string prompt = "memscan";
+    /**
+     * Returns the prompt for the scan console.
+     * @return the prompt string
+     */
+    std::string get_prompt() const override;
     
     /**
      * Handles commands entered in the scan console. This is where the scanning logic will be triggered based on user input.
      * @param args the command arguments entered by the user in the scan console 
      * @return void
      */
-    void handle_command(const std::vector<std::string> &args);
+    void handle_command(const std::vector<std::string> &args) override;
     ~scan_console();
 
 private:
@@ -34,4 +38,5 @@ private:
     MemoryObjectStore scan_results;
     std::string scan_type;  // "int", "float", "double", or "byte"
     std::string target_value_str;
+    const std::string prompt = "memscan";
 };

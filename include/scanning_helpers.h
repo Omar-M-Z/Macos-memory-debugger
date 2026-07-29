@@ -55,6 +55,7 @@ ScanResult scan_proc_memory_for_value(
             std::unique_ptr<unsigned char[]> buffer(new (std::nothrow) unsigned char[buffer_size]);
             if (buffer)
             {
+        
                 for (mach_vm_size_t chunk_offset = 0; chunk_offset < region_size; chunk_offset += chunk_size)
                 {
                     const mach_vm_size_t remaining = region_size - chunk_offset;
@@ -65,10 +66,17 @@ ScanResult scan_proc_memory_for_value(
                     kern_return_t ret = mach_vm_read_overwrite(task, region_start_address + chunk_offset, requested_bytes, (mach_vm_address_t)buffer.get(), &bytes_read);
                     if (ret != KERN_SUCCESS)
                     {
-                        return ScanResult::MEM_READ_FAIL;
+                        continue;
                     }
 
-                    for (size_t i = 0; i < searchable_bytes && i + target_size <= bytes_read; i += 1)
+                    // ensuring the scan starts at an address of the correct alignment for type T
+                    mach_vm_address_t aligned_start_address = region_start_address + chunk_offset;
+                    if (aligned_start_address % alignof(T) != 0) {
+                        aligned_start_address += alignof(T) - (aligned_start_address % alignof(T));
+                    }
+                    size_t aligned_start_index = aligned_start_address - (region_start_address + chunk_offset);
+
+                    for (size_t i = aligned_start_index; i < searchable_bytes && i + target_size <= bytes_read; i += alignof(T))
                     {
                         if (std::memcmp(buffer.get() + i, target_bytes, target_size) == 0){
                             results.add(region_start_address + chunk_offset + i, buffer.get() + i, target_size);

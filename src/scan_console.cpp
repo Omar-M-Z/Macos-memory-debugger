@@ -12,7 +12,7 @@
 // scan results are saved in an internal object
 scan_console::scan_console(debugger_console &parent, const std::vector<std::string> &args) : sub_console(parent)
 {
-    if (args.size() < 2) {
+    if (args.size() < 3) {
         log_error(ErrorType::USAGE, "Usage: scan <value> <type>. Types: int, float, double, byte");
         throw std::invalid_argument("");
         return;
@@ -191,6 +191,11 @@ void scan_console::print_help() const
     std::cout << "  list - show all found addresses" << std::endl;
     std::cout << "  refine <value> - refine search with a new value" << std::endl;
     std::cout << "  help - show this help message" << std::endl;
+}
+
+std::string scan_console::get_prompt() const
+{
+    return this->prompt;
 }
 
 // default destructor

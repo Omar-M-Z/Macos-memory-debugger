@@ -2,7 +2,7 @@
 #include <unistd.h>
 
 int main() {
-    int secret_value = 123456;
+    int secret_value = 1929340;
     
     // Print the Process ID so you know who to attach to
     std::cout << "Target PID: " << getpid() << std::endl;

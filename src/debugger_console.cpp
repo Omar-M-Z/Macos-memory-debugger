@@ -28,8 +28,12 @@ void debugger_console::handle_command(const std::vector<std::string> &args) {
     if (args[0] == "scan"){
         try {
             this->active_sub_console = std::make_unique<scan_console>(*this, args);
-        } catch (const std::invalid_argument&) {}
-    } 
+        } 
+        catch (const std::invalid_argument&) {}
+        catch (const std::runtime_error&) {}
+    }  else if (args[0] == "memmap") {
+        log_message("memmap command not yet implemented");
+    }
     else if (args[0] == "help") {
         log_message("help command not yet implemented");
     }
@@ -43,7 +47,7 @@ int debugger_console::run() {
     if (active_sub_console == nullptr) { // use main console (there is no active subconsole)
         std::cout << prompt << " > ";
     } else { // sub console is active and command should be pushed to it
-        std::cout << prompt << " > " << active_sub_console->prompt << " > ";
+        std::cout << prompt << " > " << active_sub_console->get_prompt() << " > ";
     }
     std::getline(std::cin, input);
 
