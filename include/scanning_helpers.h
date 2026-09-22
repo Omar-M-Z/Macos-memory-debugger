@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <mach/mach.h>
 #include <mach/mach_vm.h>
 #include "util.h"
@@ -10,7 +11,8 @@ enum class ScanResult {
     SUCCESS = 0,
     MEM_ALLOC_FAIL = 1,
     MEM_READ_FAIL = 2,
-    INVALID_FILTER_CONFIG = 3
+    INVALID_FILTER_CONFIG = 3,
+    GPU_FAIL = 4
 };
 
 enum class FilterType {
@@ -33,9 +35,11 @@ template<typename T>
 ScanResult scan_proc_memory_for_value(
     mach_port_t task,
     const T &target_value,
-    MemoryObjectStore &results
+    MemoryObjectStore &results,
+    uint64_t *bytes_searched = nullptr
 )
 {
+    if (bytes_searched) *bytes_searched = 0;
     const unsigned char *target_bytes = reinterpret_cast<const unsigned char *>(&target_value);
     size_t target_size = sizeof(T);
 
@@ -49,6 +53,7 @@ ScanResult scan_proc_memory_for_value(
     {
         if (region_info.protection & VM_PROT_READ)
         {
+
             constexpr mach_vm_size_t chunk_size = 16 * 1024 * 1024;
             const mach_vm_size_t overlap = target_size > 0 ? target_size - 1 : 0;
             const mach_vm_size_t buffer_size = chunk_size + overlap;
@@ -67,6 +72,9 @@ ScanResult scan_proc_memory_for_value(
                     if (ret != KERN_SUCCESS)
                     {
                         continue;
+                    }
+                    if (bytes_searched) {
+                        *bytes_searched += bytes_read < searchable_bytes ? bytes_read : searchable_bytes;
                     }
 
                     // ensuring the scan starts at an address of the correct alignment for type T

@@ -3,8 +3,10 @@
 #include <cstring>
 #include <mach/mach.h>
 #include <mach/mach_vm.h>
+#include <optional>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 inline const char* COLOR_DEFAULT = "\033[0m";
@@ -37,6 +39,26 @@ void log_success(const std::string &message);
 void log_error(ErrorType error_type, const std::string &message);
 
 /**
+ * Represents a command-line option with a name and whether it requires a value.
+ */
+struct CommandOptionInput {
+    std::string name;
+    bool requires_value;
+};
+
+/**
+ * The result of parsing command options (alias for existing type)
+ */
+using CommandOptionParsed = std::optional<std::unordered_map<std::string, std::string>>;
+
+/**
+ * Parses named command options from a vector of strings. Options without a
+ * value are stored with an empty string. Returns nullopt for an unknown option
+ * or a missing value.
+ */
+CommandOptionParsed parse_options(const std::vector<std::string> &args, size_t start_index, const std::vector<CommandOptionInput> &allowed_options);
+
+/**
  * Parses exactly eight binary digits into a byte.
  * @param input the binary text to parse
  * @param value receives the parsed byte when parsing succeeds
@@ -67,6 +89,13 @@ struct MemoryObject {
  */
 class MemoryObjectStore {
 public:
+    explicit MemoryObjectStore(std::string name = "");
+
+    /**
+     * Gets the name used to identify this store.
+     */
+    const std::string &get_name() const;
+
     /**
      * Adds a memory object to the store.
      * @param address the address of the memory object
@@ -122,5 +151,6 @@ public:
     }
 
 private:
+    std::string name;
     std::vector<MemoryObject> objects;
 };

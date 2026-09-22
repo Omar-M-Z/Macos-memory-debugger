@@ -82,16 +82,6 @@ int main(int argc, char *argv[])
         }
     }
 
-    /*
-    std::vector<mach_vm_address_t> matching_addresses;
-    scan_proc_memory_for_value(task, 123456, matching_addresses);
-
-    // printing addresses
-    for (mach_vm_address_t addr : matching_addresses)
-    {
-        std::cout << "0x" << std::hex << addr << std::endl;
-    }*/
-
     mach_port_deallocate(mach_task_self(), task);
     return 0;
 }

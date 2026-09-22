@@ -2,6 +2,7 @@
 #include <iostream>
 #include <memory>
 #include <new>
+#include <utility>
 
 
 // MESSAGE LOGGING
@@ -40,7 +41,42 @@ void log_error(ErrorType error_type, const std::string &message)
     std::cerr << COLOR_RED << error_prefix << " " << message << COLOR_DEFAULT << std::endl;
 }
 
+CommandOptionParsed parse_options(
+    const std::vector<std::string> &args,
+    size_t start_index,
+    const std::vector<CommandOptionInput> &allowed_options)
+{
+    std::unordered_map<std::string, std::string> parsed;
+    for (size_t i = start_index; i < args.size(); ++i) {
+        const CommandOptionInput *matched = nullptr;
+        for (const CommandOptionInput &option : allowed_options) {
+            if (option.name == args[i]) {
+                matched = &option;
+                break;
+            }
+        }
+        if (!matched) return std::nullopt;
+
+        if (matched->requires_value) {
+            if (++i >= args.size()) return std::nullopt;
+            parsed[matched->name] = args[i];
+        } else {
+            parsed[matched->name] = "";
+        }
+    }
+    return parsed;
+}
+
 // SCAN STORAGE 
+
+MemoryObjectStore::MemoryObjectStore(std::string name) : name(std::move(name))
+{
+}
+
+const std::string &MemoryObjectStore::get_name() const
+{
+    return name;
+}
 
 /**
  * Adds a memory object to the store.
