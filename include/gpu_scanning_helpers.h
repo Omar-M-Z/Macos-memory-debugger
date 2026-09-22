@@ -43,13 +43,13 @@ ScanResult scan_proc_memory_for_value_gpu(mach_port_t task, const T& target_valu
     {
         if (region_info.protection & VM_PROT_READ)
         {
-
             constexpr mach_vm_size_t chunk_size = 16 * 1024 * 1024;
             const mach_vm_size_t overlap = target_size > 0 ? target_size - 1 : 0;
             const mach_vm_size_t buffer_size = chunk_size + overlap;
             std::unique_ptr<unsigned char[]> buffer(new (std::nothrow) unsigned char[buffer_size]);
             if (buffer)
             {
+                // iterating over chunks of the region, reading them into a buffer, and scanning them for the target value
                 for (mach_vm_size_t chunk_offset = 0; chunk_offset < region_size; chunk_offset += chunk_size)
                 {
                     // how much still hasnt been processed in this region
