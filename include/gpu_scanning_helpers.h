@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cstdint>
 #include <limits>
-#include <memory>
 
 #include "metal_resources.h"
 #include "scanning_helpers.h"
@@ -46,9 +45,12 @@ ScanResult scan_proc_memory_for_value_gpu(mach_port_t task, const T& target_valu
             constexpr mach_vm_size_t chunk_size = 16 * 1024 * 1024;
             const mach_vm_size_t overlap = target_size > 0 ? target_size - 1 : 0;
             const mach_vm_size_t buffer_size = chunk_size + overlap;
-            std::unique_ptr<unsigned char[]> buffer(new (std::nothrow) unsigned char[buffer_size]);
-            if (buffer)
+
+            MTL::Buffer* input = metal.device->newBuffer(buffer_size, MTL::ResourceStorageModeShared);
+
+            if (input)
             {
+                auto* buffer = static_cast<unsigned char*>(input->contents());
                 // iterating over chunks of the region, reading them into a buffer, and scanning them for the target value
                 for (mach_vm_size_t chunk_offset = 0; chunk_offset < region_size; chunk_offset += chunk_size)
                 {
@@ -60,7 +62,8 @@ ScanResult scan_proc_memory_for_value_gpu(mach_port_t task, const T& target_valu
                     const mach_vm_size_t requested_bytes = remaining < buffer_size ? remaining : buffer_size;
 
                     mach_vm_size_t bytes_read;
-                    kern_return_t ret = mach_vm_read_overwrite(task, region_start_address + chunk_offset, requested_bytes, (mach_vm_address_t)buffer.get(), &bytes_read);
+
+                    kern_return_t ret = mach_vm_read_overwrite(task, region_start_address + chunk_offset, requested_bytes, reinterpret_cast<mach_vm_address_t>(buffer), &bytes_read);
                     if (ret != KERN_SUCCESS)
                     {
                         continue;
@@ -97,15 +100,12 @@ ScanResult scan_proc_memory_for_value_gpu(mach_port_t task, const T& target_valu
                         static_cast<uint32_t>(target_size), static_cast<uint32_t>(alignof(T)),
                         static_cast<uint32_t>(aligned_start_index)};
 
-                    // Copy this process-memory chunk into a shared Metal buffer.
-                    // The GPU writes one byte to matches for each candidate address.
-                    MTL::Buffer* input = metal.device->newBuffer(buffer.get(), bytes_read, MTL::ResourceStorageModeShared);
                     MTL::Buffer* matches = metal.device->newBuffer(candidates, MTL::ResourceStorageModeShared);
 
                     // A command buffer holds this chunk's GPU work. The compute
                     // encoder records the pipeline, its inputs, and the dispatch.
                     MTL::CommandBuffer* command = metal.command_queue->commandBuffer();
-                    MTL::ComputeCommandEncoder* encoder = command ? command->computeCommandEncoder() : nullptr;
+                    MTL::ComputeCommandEncoder* encoder = command->computeCommandEncoder();
                     if (!input || !matches || !encoder) {
                         if (encoder) encoder->endEncoding();
                         if (input) input->release();
@@ -144,13 +144,13 @@ ScanResult scan_proc_memory_for_value_gpu(mach_port_t task, const T& target_valu
                     for (size_t i = 0; i < candidates; ++i) {
                         if (flags[i]) {
                             const size_t offset = aligned_start_index + i * alignof(T);
-                            results.add(region_start_address + chunk_offset + offset, buffer.get() + offset, target_size);
+                            results.add(region_start_address + chunk_offset + offset, buffer + offset, target_size);
                         }
                     }
-                    input->release();
                     matches->release();
 
                 }
+                input->release();
             } else {
                 pool->release();
                 return ScanResult::MEM_ALLOC_FAIL;
